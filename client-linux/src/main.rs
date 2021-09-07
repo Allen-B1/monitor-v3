@@ -40,7 +40,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if seconds > 15 {
             seconds = 0;
-            dbg!(serde_json::to_string(&http_data));
             client.post(format!("http://127.0.0.1:7246/api/{}/add", name)).json(&http_data).send().await?;
             http_data = Default::default();
         }

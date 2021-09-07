@@ -16,8 +16,36 @@ lazy_static! {
     static ref STATIC_DATA: Mutex<HashMap<String, Data>> = Mutex::new(HashMap::new());
 }
 
+const SAVE_FILE: &'static str = "data.json";
+
 #[tokio::main]
 async fn main() {
+    // save STATIC_DATA periodically
+    tokio::spawn(async {
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+        loop {
+            interval.tick().await;
+
+            let mut file = match std::fs::File::create(SAVE_FILE) {
+                Ok(f) => f,
+                Err(err) => {
+                    eprintln!("error saving file: {}", err);
+                    continue
+                }
+            };
+            serde_json::to_writer(&mut file, &*STATIC_DATA.lock().unwrap());
+        }
+    });
+
+    match std::fs::File::open(SAVE_FILE) {
+        Ok(f) => {
+            *STATIC_DATA.lock().unwrap() = serde_json::from_reader(f).unwrap();
+        },
+        Err(err) => {
+            eprintln!("save file '{}' not found, creating later", SAVE_FILE);
+        }
+    };
+
     let api_add = warp::path!("api" / String / "add")
         .and(warp::post())
         .and(warp::body::json())
