@@ -110,13 +110,19 @@ fn predict_subprogram<'a, 'b>(program: &'a str, title: &'b str) -> Cow<'b, str> 
 }
 
 fn normalize(program: &str) -> Cow<str> {
-    let mut chars = program.chars();
-    let first = match chars.next() {
-        Some(c) => c,
-        None => return "".into()
-    };
+    let program = program.replace("-", " ");
 
-    format!("{}{}", first.to_uppercase(), chars.collect::<String>().to_lowercase()).into()
+    program.split(" ").map(|slice| {
+        let slice = slice.split(".").collect::<Vec<&str>>();
+        let slice = slice[slice.len()-1];
+        let mut chars = slice.chars();
+        let first = match chars.next() {
+            Some(c) => c,
+            None => return "".to_owned()
+        };
+
+        format!("{}{}", first.to_uppercase(), chars.collect::<String>().to_lowercase())
+    }).collect::<Vec<String>>().join(" ").into()
 }
 
 pub trait RawWindowData {
@@ -144,15 +150,4 @@ impl<T> From<T> for Program where T: RawWindowData {
 }
 
 
-pub mod http {
-    use std::collections::HashMap;
-    use serde::{Deserialize,Serialize};
-
-    use crate::{ActiveProgram, Program};
-
-    #[derive(Clone, Serialize, Deserialize, Default)]
-    pub struct Add {
-        pub active: HashMap<ActiveProgram, u32>,
-        pub open: HashMap<Program, u32>,
-    }
-}
+pub mod http;
