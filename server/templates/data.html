@@ -1,0 +1,139 @@
+<html>
+    <head>
+        <style>
+            body {#
+                font-family: sans-serif;
+                font-size: 14px;
+                margin: 0; padding: 0; }
+            main {#
+                padding: 16px; }
+            header {#
+                background: hsl(50, 35%, 85%);
+                padding: 16px; }
+            header h1, header p {#
+                text-align: center;  }
+            header h1 {#
+                font-size: 20px; }
+            option[selected] {#
+                font-weight: bold; }
+            .program-info, .subprogram-info {#
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            .program-info:not(:first-child) {#
+                margin-top: 24px;
+            }
+            .program-name {#
+                font-size: 16px;
+                padding-right: 16px;
+                text-align: left;
+                flex-basis: 192px; }
+            .subprogram-info .program-name {#
+                margin-left: 32px;
+                flex-basis: 160px;
+            }
+            .program-bar-container {#
+                flex-grow: 1; }
+            .program-bar {#
+                position: relative;
+                height: 24px;
+                background: #aaa; }
+            .active-bar {#
+                position: relative;
+                height: 24px;
+                background: #555; }
+            .open-time, .active-time {#
+                font-size: 14px;
+                display: none; }
+            .program-bar-container:hover .open-time, .program-bar-container:hover .active-time {#
+                display: block;
+                position: absolute;
+                top: 48px;
+                background: #eee;
+                padding: 8px;
+                z-index: 1;
+                min-width: 128px;
+            }
+            .active-time {#
+                top: 24px !important;
+            }
+
+            .program-Firefox .program-bar {#
+                background: hsl(30, 65%, 75%); }
+            .program-Firefox .active-bar {#
+                background: hsl(30, 65%, 50%); }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>{self.name}'s Activity</h1>
+            <p>{self.date.format("%Y-%m-%d")}</p>
+            <form method="GET" action="/{self.name}/{self.date.format("%Y/%m/%d").to_string()}/device">
+                <select name="device">
+                {:for (id, data) in self.devices.iter()}
+                    <option {:if id == id}selected{:end} value="{id}">{data}</option>
+                {:end}
+                </select>
+                <button type="submit">Go</button>
+            </form>
+        </header>
+
+        {:fn format_class(s: &str) -> String {
+            s.replace(" ", "_").to_lowercase()
+        }}
+
+        {:fn format_duration(secs: u32) -> String {
+            let minutes = secs / 60;
+            let hours = minutes / 60;
+
+            let mut s = String::new();
+            if hours > 0 {
+                s += &format!("{}h", hours);
+            }
+            if hours > 0 || minutes > 0 {
+                s += &format!("{}m", minutes % 60);
+            }
+            s += &format!("{}s", secs % 60);
+            s
+        }}
+
+        <main>
+        {:let max_time = self.monitor.open.iter().max_by_key(|(prg, &time)| -> u32 {time}).map(|(_, &time)| time).unwrap()}
+        {:let mut program_order: Vec<_> = self.monitor.open.keys().collect()}
+        {: program_order.sort_by(|a, b| self.active_data.get(&b.program).map(|x| x.0).unwrap_or(0).partial_cmp(&self.active_data.get(&a.program).map(|x| x.0).unwrap_or(0)).unwrap()) }
+        {:for prg in program_order.iter()}
+            {:let time = self.monitor.open[prg]}
+            <div class="program-info program-{format_class(&prg.program)}">
+                <div class="program-name">{prg.program}</div>
+                <div class="program-bar-container">
+                    <div class="program-bar" style="width:{(time as f64) / (max_time as f64) * 100.0}%">
+                        <div class="open-time">Open: {format_duration(time)}</div>
+
+                        {:if self.active_data.contains_key(&prg.program)}
+                            {:let active_time = self.active_data[&prg.program].0}
+                            <div class="active-bar" style="width:{(active_time as f64) / (time as f64) * 100.0}%"></div>
+                            <div class="active-time">Active: {format_duration(active_time)}</div>
+                        {:end}
+                        </div>
+                    </div>
+            </div>
+            {:if self.active_data.contains_key(&prg.program)}
+                {:for subprogram in self.active_data[&prg.program].1.iter()}
+
+                {:let active_time = self.monitor.active[&monitor::ActiveProgram { program: prg.program.clone(), subprogram: Some(subprogram.clone()) }]}
+                <div class="subprogram-info program-{format_class(&prg.program)}">
+                    <div class="program-name">{subprogram}</div>
+                    <div class="program-bar-container">
+                        <div class="active-bar" style="width:{(active_time as f64) / (max_time as f64) * 100.0}%">
+                            <div class="active-time">Active: {format_duration(active_time)}</div>
+                        </div>
+                    </div>
+                </div>
+                {:end}
+            {:end}
+        {:end}
+        </main>
+    </body>
+</html>

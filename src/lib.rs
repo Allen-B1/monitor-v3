@@ -103,7 +103,12 @@ fn predict_subprogram<'a, 'b>(program: &'a str, title: &'b str) -> Cow<'b, str> 
         if title.ends_with("YouTube") {
             return "youtube.com".into()
         }
-
+        if title.ends_with("| Musescore.com") || title.starts_with("Musescore.com |") {
+            return "musescore.com".into()
+        }
+        if title.ends_with("- Google Docs") {
+            return "docs.google.com".into()
+        }
     }
 
     subprogram.into()

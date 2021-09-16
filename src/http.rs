@@ -20,7 +20,7 @@ impl Add {
 }
 
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DeviceData {
     #[serde(rename = "type")]
     pub type_: DeviceType,
@@ -28,7 +28,7 @@ pub struct DeviceData {
     pub distro: Option<String>,
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum DeviceType {
     Desktop,

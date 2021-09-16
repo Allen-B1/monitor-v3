@@ -1,18 +1,22 @@
 #[macro_use]
 extern crate lazy_static;
 
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, error::Error, sync::Mutex, task::Context};
 
+use chrono::{Datelike, NaiveDate};
+use monitor::http;
+use serde_json::json;
+use std::borrow::Borrow;
 use warp::{Filter, Rejection, Reply};
 use serde::{Serialize,Deserialize};
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct MonitorData {
     active: HashMap<monitor::ActiveProgram, u32>,
     open: HashMap<monitor::Program, u32>,
 }
 
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct UserData {
     /// Not every valid device is guaranteed to have a `DeviceData`.
     devices: HashMap<monitor::http::DeviceID, monitor::http::DeviceData>,
@@ -103,9 +107,14 @@ async fn main() {
             warp::reply::json(&data.get(&name).cloned())
         });
 
+    let page_device = warp::path!(String / u32 / u8 / u8 / u16)
+        .and(warp::get())
+        .and_then(handle_page_device);
+
     let routes = api_today
         .or(api_add)
         .or(api_device)
+        .or(page_device)
         .recover(error_func);
 
     warp::serve(routes)
@@ -117,4 +126,70 @@ async fn error_func(rejection: Rejection) -> Result<warp::reply::Json, Rejection
     eprintln!("error: {:?}", rejection);
     
     Err(rejection)
+}
+
+#[derive(Debug)]
+pub struct RejectBadTemplate(String);
+impl warp::reject::Reject for RejectBadTemplate {}
+impl<E: Error> From<E> for RejectBadTemplate {
+    fn from(e: E) -> Self {
+        Self(e.to_string())
+    }
+}
+#[derive(Debug)]
+pub struct RejectBadData(String);
+impl warp::reject::Reject for RejectBadData {}
+impl<E: Error> From<E> for RejectBadData {
+    fn from(e: E) -> Self {
+        Self(e.to_string())
+    }
+}
+
+#[litem::template("server/templates/data.html", escape="html")]
+struct DataTemplate {
+    name: String,
+    date: NaiveDate,
+    device: monitor::http::DeviceID,
+    devices: HashMap<monitor::http::DeviceID, monitor::http::DeviceData>,
+
+    monitor: MonitorData,
+    active_data: HashMap<String, (u32, Vec<String>)>,
+}
+
+async fn handle_page_device(name: String, year: u32, month: u8, day: u8, device: monitor::http::DeviceID) -> Result<Box<dyn warp::reply::Reply>, Rejection> {
+    let today = chrono::Local::now().naive_local().date();
+    let date = chrono::NaiveDate::from_ymd(year as i32, month.into(), day.into());
+    let data = if today == date {
+        let data = STATIC_DATA.lock().unwrap();
+        data.clone()
+    } else {
+        let data = std::fs::read_to_string(format!("data-{}.json", date.format("%Y-%m-%d")))
+            .map_err(|e| warp::reject::custom(RejectBadData::from(e)))?;
+        let data: HashMap<String, UserData> = serde_json::from_str(&data)
+            .map_err(|e| warp::reject::custom(RejectBadData::from(e)))?;
+        data
+    };
+
+    let data = data.get(&name).ok_or(warp::reject::not_found())?;
+    let monitor = data.monitor.get(&device).ok_or(warp::reject::not_found())?;
+
+    let mut active_data: HashMap<String, (u32, Vec<String>)> = HashMap::new();
+    for (program, &time) in monitor.active.iter() {
+        let entry = active_data.entry(program.program.to_owned()).or_default();
+        entry.0 += time;
+
+        if let Some(s) = program.subprogram.as_ref() {
+            entry.1.push(s.clone());
+        }
+    }
+
+
+    let reply = DataTemplate {
+        name,
+        date,
+        device,
+        devices: data.devices.clone(),
+        monitor: monitor.clone(), active_data
+    }.render_string().map_err(|e| warp::reject::custom(RejectBadTemplate(e.to_string())))?;
+    Ok(Box::new(warp::reply::html(reply)))
 }
