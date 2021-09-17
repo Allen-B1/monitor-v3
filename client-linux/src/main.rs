@@ -76,10 +76,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .help("Device ID of this computer")
             .takes_value(true)
             .required(false))
+        .arg(clap::Arg::with_name("server")
+            .short("s")
+            .long("server")
+            .takes_value(true)
+            .value_name("http://HOST:PORT")
+            .help("URL of the monitor server")
+            .required(false)
+            .default_value("http://127.0.0.1:7246"))
         .get_matches();
 
     let name = matches.value_of("name").unwrap();
     let device_id = matches.value_of("device-id").map(<DeviceID as std::str::FromStr>::from_str).and_then(Result::ok).unwrap_or_else(|| get_device_id().unwrap());
+    let server = matches.value_of("server").unwrap();
 
     let mut interval = time::interval(time::Duration::from_secs(1));
     let client = reqwest::Client::new();
@@ -89,7 +98,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("username: {}", name);
     println!("device id: {}", device_id);
 
-    client.post(format!("http://127.0.0.1:7246/api/{}/device", name)).json(&monitor::http::Device {
+    client.post(format!("{}/api/{}/device", server, name)).json(&monitor::http::Device {
         id: device_id,
         data: get_device_info().unwrap()
     }).send().await?;
@@ -109,7 +118,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         if seconds > 15 {
             seconds = 0;
-            client.post(format!("http://127.0.0.1:7246/api/{}/add", name)).json(&http_data).send().await?;
+            client.post(format!("{}/api/{}/add", server, name)).json(&http_data).send().await?;
             http_data = monitor::http::Add::new(device_id);
         }
         seconds += 1;

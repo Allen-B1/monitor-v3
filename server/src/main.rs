@@ -31,6 +31,20 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() {
+    let args = clap::App::new("monitor-server")
+        .about("server for monitor")
+        .arg(clap::Arg::with_name("port")
+            .short("p")
+            .long("port")
+            .takes_value(true)
+            .value_name("NUM")
+            .help("HTTP port to serve on")
+            .default_value("7246")
+        )
+        .get_matches();
+    
+    let port = args.value_of("port").unwrap().parse::<u16>().unwrap();
+
     let save_file = format!("data-{}.json", chrono::Local::today().naive_local().format("%Y-%m-%d"));
     match std::fs::File::open(&save_file) {
         Ok(f) => {
@@ -118,7 +132,7 @@ async fn main() {
         .recover(error_func);
 
     warp::serve(routes)
-        .run(([127, 0, 0, 1], 7246))
+        .run(([127, 0, 0, 1], port))
         .await;
 }
 

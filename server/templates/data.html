@@ -1,69 +1,66 @@
 <html>
     <head>
         <style>
-            body {#
-                font-family: sans-serif;
-                font-size: 14px;
-                margin: 0; padding: 0; }
-            main {#
-                padding: 16px; }
-            header {#
-                background: hsl(50, 35%, 85%);
-                padding: 16px; }
-            header h1, header p {#
-                text-align: center;  }
-            header h1 {#
-                font-size: 20px; }
-            option[selected] {#
-                font-weight: bold; }
-            .program-info, .subprogram-info {#
-                display: flex;
-                flex-direction: row;
-                align-items: center;
-                margin-bottom: 8px;
-            }
-            .program-info:not(:first-child) {#
-                margin-top: 24px;
-            }
-            .program-name {#
-                font-size: 16px;
-                padding-right: 16px;
-                text-align: left;
-                flex-basis: 192px; }
-            .subprogram-info .program-name {#
-                margin-left: 32px;
-                flex-basis: 160px;
-            }
-            .program-bar-container {#
-                flex-grow: 1; }
-            .program-bar {#
-                position: relative;
-                height: 24px;
-                background: #aaa; }
-            .active-bar {#
-                position: relative;
-                height: 24px;
-                background: #555; }
-            .open-time, .active-time {#
-                font-size: 14px;
-                display: none; }
-            .program-bar-container:hover .open-time, .program-bar-container:hover .active-time {#
-                display: block;
-                position: absolute;
-                top: 48px;
-                background: #eee;
-                padding: 8px;
-                z-index: 1;
-                min-width: 128px;
-            }
-            .active-time {#
-                top: 24px !important;
-            }
+                body {#
+                    font-family: sans-serif;
+                    font-size: 14px;
+                    margin: 0; padding: 0; }
+                main {#
+                    padding: 16px; }
+                header {#
+                    background: hsl(50, 35%, 85%);
+                    padding: 16px; }
+                header h1, header p {#
+                    text-align: center;  }
+                header h1 {#
+                    font-size: 20px; }
+                option[selected] {#
+                    font-weight: bold; }
+                .program-info, .subprogram-info {#
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    margin-bottom: 8px; }
+                .program-info:not(:first-child) {#
+                    margin-top: 24px; }
+                .program-name {#
+                    font-size: 16px;
+                    padding-right: 16px;
+                    text-align: left;
+                    flex-basis: 192px; }
+                .subprogram-info .program-name {#
+                    margin-left: 32px;
+                    flex-basis: 160px;
+                }
+                .program-bar-container {#
+                    flex-grow: 1; }
+                .program-bar {#
+                    position: relative;
+                    height: 24px;
+                    background: #aaa; }
+                .active-bar {#
+                    position: relative;
+                    height: 24px;
+                    background: #555; }
+                .open-time, .active-time {#
+                    font-size: 14px;
+                    display: none; }
+                .program-bar-container:hover .open-time, .program-bar-container:hover .active-time {#
+                    display: block;
+                    position: absolute;
+                    top: 48px;
+                    background: #eee;
+                    padding: 8px;
+                    z-index: 1;
+                    min-width: 128px;
+                }
+                .active-time {#
+                    top: 24px !important; }
 
-            .program-Firefox .program-bar {#
-                background: hsl(30, 65%, 75%); }
-            .program-Firefox .active-bar {#
-                background: hsl(30, 65%, 50%); }
+                .program-Firefox .program-bar {#
+                    background: hsl(30, 65%, 75%); }
+                .program-Firefox .active-bar {#
+                    background: hsl(30, 65%, 50%); }
         </style>
     </head>
     <body>
