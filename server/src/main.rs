@@ -29,6 +29,10 @@ lazy_static! {
     static ref STATIC_DATA: Mutex<HashMap<String, UserData>> = Mutex::new(HashMap::new());
 }
 
+#[derive(Debug)]
+pub struct RejectGeneric(String);
+impl warp::reject::Reject for RejectGeneric {}
+
 #[tokio::main]
 async fn main() {
     let args = clap::App::new("monitor-server")
@@ -125,10 +129,30 @@ async fn main() {
         .and(warp::get())
         .and_then(handle_page_device);
 
+    let page_redirect = warp::path!(String / "redirect")
+        .and(warp::get())
+        .and(warp::query())
+        .and_then(handle_page_redirect);
+
+    let page_person = warp::path!(String)
+        .and(warp::get())
+        .map(|name| {
+            let date = chrono::Local::now().naive_local().date();
+            let data = STATIC_DATA.lock().unwrap();
+            warp::redirect::redirect(format!("/{}/{}/{}/{}/{}", name, date.year(), date.month(), date.day(),
+                data.get(&name)
+                    .and_then(|data| data.monitor.keys().next())
+                    .map(|&a| a)
+                    .unwrap_or(0)
+            ).parse::<warp::http::Uri>().unwrap())
+        });
+
     let routes = api_today
         .or(api_add)
         .or(api_device)
         .or(page_device)
+        .or(page_redirect)
+        .or(page_person)
         .recover(error_func);
 
     warp::serve(routes)
@@ -136,10 +160,19 @@ async fn main() {
         .await;
 }
 
-async fn error_func(rejection: Rejection) -> Result<warp::reply::Json, Rejection> { 
+async fn handle_page_redirect (name: String, query: HashMap<String, String>) -> Result<impl Reply, Rejection> {
+    let date_str = query.get("date").ok_or(warp::reject::not_found())?;
+    let date = chrono::NaiveDate::parse_from_str(date_str, "%Y-%m-%d").map_err(|e| RejectGeneric(e.to_string()))?;
+    let device = query.get("device").ok_or(warp::reject::not_found())?.parse::<monitor::http::DeviceID>().map_err(|e| RejectGeneric(e.to_string()))?;
+
+    Ok(warp::redirect::redirect(format!("/{}/{}/{}/{}/{}", name, date.year(), date.month(), date.day(), device).parse::<warp::http::Uri>().unwrap()))
+}
+
+async fn error_func(rejection: Rejection) -> Result<warp::reply::Html<String>, Rejection> { 
     eprintln!("error: {:?}", rejection);
-    
-    Err(rejection)
+
+    // TODO: error page
+    Ok(warp::reply::html(format!("error: {:?}", rejection)))
 }
 
 #[derive(Debug)]
