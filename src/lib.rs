@@ -109,6 +109,9 @@ fn predict_subprogram<'a, 'b>(program: &'a str, title: &'b str) -> Cow<'b, str> 
         if title.ends_with("- Google Docs") {
             return "docs.google.com".into()
         }
+        if title == "WhatsApp" {
+            return "whatsapp.com".into();
+        }
     }
 
     subprogram.into()

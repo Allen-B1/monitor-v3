@@ -69,3 +69,22 @@ impl monitor::RawWindowData for WindowInfo {
         (&self.title).into()
     }
 }
+
+pub fn is_locked() -> bool {
+    match Command::new("xfce4-screensaver-command").args(&["-q"]).output() {
+        Ok(output) => {
+            let output = match std::str::from_utf8(&output.stdout) {
+                Ok(v) => v,
+                Err(xfce4_error) => {
+                    dbg!(xfce4_error);
+                    return false;
+                }
+            };
+            let active = output.split("\n").next().map(|x| !x.ends_with("inactive"));
+            return active.unwrap_or(false);
+        },
+        Err(_) => {} // continue
+    };
+
+    false
+}

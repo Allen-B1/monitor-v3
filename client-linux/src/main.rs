@@ -104,6 +104,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }).send().await?;
 
     loop {
+        // Skip counting if session is locked (i.e. user isn't using the computer)
+        if process::is_locked() {
+            interval.tick().await;
+            continue;
+        }
+
         let active_id = process::get_active_window()?;
         let windows = process::get_all_windows()?;
         for id in windows {
