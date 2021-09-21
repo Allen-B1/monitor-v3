@@ -139,7 +139,7 @@ async fn main() {
         .map(|name| {
             let date = chrono::Local::now().naive_local().date();
             let data = STATIC_DATA.lock().unwrap();
-            warp::redirect::redirect(format!("/{}/{}/{}/{}/{}", name, date.year(), date.month(), date.day(),
+            warp::redirect::temporary(format!("/{}/{}/{}/{}/{}", name, date.year(), date.month(), date.day(),
                 data.get(&name)
                     .and_then(|data| data.monitor.keys().next())
                     .map(|&a| a)

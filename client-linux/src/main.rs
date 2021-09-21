@@ -1,5 +1,5 @@
 mod process;
-use std::{borrow::Borrow, collections::HashMap, env::args, error::Error, hash::Hash};
+use std::{borrow::{Borrow, Cow}, collections::HashMap, env::args, error::Error, hash::Hash};
 
 use monitor::http::{Device, DeviceData, DeviceID};
 use tokio::time;
@@ -95,13 +95,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut seconds = 0;
     let mut http_data: monitor::http::Add = monitor::http::Add::new(device_id);
 
-    println!("username: {}", name);
-    println!("device id: {}", device_id);
-
-    client.post(format!("{}/api/{}/device", server, name)).json(&monitor::http::Device {
-        id: device_id,
-        data: get_device_info().unwrap()
-    }).send().await?;
+    log(0, format!("username: {}", name));
+    log(0, format!("device id: {}", device_id));
 
     loop {
         // Skip counting if session is locked (i.e. user isn't using the computer)
@@ -110,26 +105,67 @@ async fn main() -> Result<(), Box<dyn Error>> {
             continue;
         }
 
-        let active_id = process::get_active_window()?;
-        let windows = process::get_all_windows()?;
-        for id in windows {
-            let data = process::get_window_info(id)?;
-            if let Some(data) = data {
-                if id == active_id {
-                    *http_data.active.entry(data.clone().into()).or_insert(0) += 1;
-                }
-                *http_data.open.entry(data.into()).or_insert(0) += 1;
-            }
+        match add_data(&mut http_data) {
+            Err(e) => {
+                log(2, e.to_string());
+            },
+            _ => {},
         }
 
-        if seconds > 15 {
-            seconds = 0;
+
+
+        if seconds % 15 == 1 {
             client.post(format!("{}/api/{}/add", server, name)).json(&http_data).send().await?;
             http_data = monitor::http::Add::new(device_id);
         }
+
+        if seconds % 120 == 0 {
+            client.post(format!("{}/api/{}/device", server, name)).json(&monitor::http::Device {
+                id: device_id,
+                data: get_device_info().unwrap()
+            }).send().await?;        
+        }
+
         seconds += 1;
+        if seconds > 240 {
+            seconds -= 240;
+        }
 
         interval.tick().await;
     }
 }
 
+fn add_data(http_data: &mut monitor::http::Add) -> Result<(), Box<dyn Error>> {
+    let active_id = process::get_active_window()?;
+    let windows = process::get_all_windows()?;
+    let mut datas = Vec::new();
+    for id in windows {
+        datas.push((id, process::get_window_info(id)?));
+    }
+    for (id, data) in datas {
+        if let Some(data) = data {
+            if id == active_id {
+                *http_data.active.entry(data.clone().into()).or_insert(0) += 1;
+            }
+            *http_data.open.entry(data.into()).or_insert(0) += 1;
+        }
+    }
+
+    Ok(())
+}
+
+fn log<'a>(level: u8, text: impl Into<Cow<'a, str>>) {
+    let type_ = match level {
+        0 => "INFO",
+        1 => "WARN",
+        _ => "ERROR"
+    };
+
+    let color = match level {
+        0 => "\033[34m",
+        1 => "\033[33m",
+        _ => "\033[31m"
+    };
+
+    eprintln!("[{}{}\033[0m]: {}", color, type_, text.into());
+}

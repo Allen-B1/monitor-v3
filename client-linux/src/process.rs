@@ -3,6 +3,7 @@ use std::convert::TryInto;
 use std::error::Error;
 use std::num::ParseIntError;
 use std::process::Command;
+use crate::log;
 
 pub fn get_active_window() -> Result<u32, Box<dyn Error>> {
     let output = Command::new("xprop").args(&["-root", "32x", "|$0", "_NET_ACTIVE_WINDOW"]).output()?;
@@ -76,7 +77,7 @@ pub fn is_locked() -> bool {
             let output = match std::str::from_utf8(&output.stdout) {
                 Ok(v) => v,
                 Err(xfce4_error) => {
-                    dbg!(xfce4_error);
+                    log(2, format!("xfce error: {}", xfce4_error));
                     return false;
                 }
             };
