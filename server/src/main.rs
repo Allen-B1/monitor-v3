@@ -192,6 +192,22 @@ impl<E: Error> From<E> for RejectBadData {
     }
 }
 
+#[litem::template("server/templates/header.html", escape="html")]
+struct HeaderTemplate {
+    name: String,
+    date: NaiveDate,
+    device: monitor::http::DeviceID,
+    devices: HashMap<monitor::http::DeviceID, monitor::http::DeviceData>,
+}
+
+#[litem::template("server/templates/no-data.html", escape="html")]
+struct NoDataTemplate {
+    name: String,
+    date: NaiveDate,
+    device: monitor::http::DeviceID,
+    devices: HashMap<monitor::http::DeviceID, monitor::http::DeviceData>,
+}
+
 #[litem::template("server/templates/data.html", escape="html")]
 struct DataTemplate {
     name: String,
@@ -206,19 +222,43 @@ struct DataTemplate {
 async fn handle_page_device(name: String, year: u32, month: u8, day: u8, device: monitor::http::DeviceID) -> Result<Box<dyn warp::reply::Reply>, Rejection> {
     let today = chrono::Local::now().naive_local().date();
     let date = chrono::NaiveDate::from_ymd(year as i32, month.into(), day.into());
+
+    let no_data = || {
+        warp::reply::html(NoDataTemplate {
+            name: name.clone(),
+            date: date.clone(),
+            device: device,
+            devices: {
+                let mut h=  HashMap::new();
+                h.insert(device, monitor::http::DeviceData { type_: Default::default(), distro: Some(device.to_string()), os: "Unknown".to_owned()});
+                h
+            }
+        }.render_string().unwrap())
+    };
+
     let data = if today == date {
         let data = STATIC_DATA.lock().unwrap();
         data.clone()
     } else {
-        let data = std::fs::read_to_string(format!("data-{}.json", date.format("%Y-%m-%d")))
-            .map_err(|e| warp::reject::custom(RejectBadData::from(e)))?;
-        let data: HashMap<String, UserData> = serde_json::from_str(&data)
-            .map_err(|e| warp::reject::custom(RejectBadData::from(e)))?;
+        let data = match std::fs::read_to_string(format!("data-{}.json", date.format("%Y-%m-%d"))) {
+            Ok(v) => v,
+            Err(e) => return Ok(Box::new(no_data()))
+        };
+        let data: HashMap<String, UserData> = match serde_json::from_str(&data) {
+            Ok(v) => v,
+            Err(e) => return Ok(Box::new(no_data()))
+        };
         data
     };
 
-    let data = data.get(&name).ok_or(warp::reject::not_found())?;
-    let monitor = data.monitor.get(&device).ok_or(warp::reject::not_found())?;
+    let data = match data.get(&name) {
+        Some(v) => v,
+        None => return Ok(Box::new(no_data()))
+    };
+    let monitor = match data.monitor.get(&device) {
+        Some(v) => v,
+        None => return Ok(Box::new(no_data()))
+    };
 
     let mut active_data: HashMap<String, (u32, Vec<String>)> = HashMap::new();
     for (program, &time) in monitor.active.iter() {
