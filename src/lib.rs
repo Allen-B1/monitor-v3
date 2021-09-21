@@ -112,6 +112,9 @@ fn predict_subprogram<'a, 'b>(program: &'a str, title: &'b str) -> Cow<'b, str> 
         if title == "WhatsApp" {
             return "whatsapp.com".into();
         }
+        if title.ends_with("| Quizlet") {
+            return "quizlet.com".into();
+        }
     }
 
     subprogram.into()

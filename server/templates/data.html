@@ -7,84 +7,83 @@
                     font-family: sans-serif;
                     font-size: 14px;
                     margin: 0; padding: 0; }
-                main {
-                    padding: 16px; }
                 header {
-                    background: hsl(45, 35%, 85%);
+                    background: hsl(45, 70%, 50%);
+                    color: #fff;
+                    display: flex;
+                    flex-direction: row;
                     padding: 16px; }
                 header h1, header p {
-                    text-align: center;  }
-                header h1 {
-                    font-size: 20px; }
-
-                form {
-                    padding: 16px;
-                    background: hsl(45, 35%, 85%);                    
+                    margin: 0;
+                    font-size: 16px;
                 }
-                input, button, select {
-                    border: 2px solid hsl(45, 35%, 35%);
+                header h1 {
+                    flex-grow: 1;
+                }
+
+                #subheader {
+                    padding: 8px 16px;
+                    display: flex;
+                    flex-direction: row; }
+                #subheader form {
+                    text-align: center;
+                    flex-grow: 1;
+                    margin: 0; }
+
+                input, button, .button, select {
+                    border: 2px solid hsl(45, 70%, 50%);
                     padding: 7px 16px;
                     font-family: sans-serif;
                     font-size: 14px;
                     background: #fff;
+                    text-decoration: none;
                 }
-                button, select {
+                button, .button, select {
                     color: #fff;
-                    background: hsl(45, 35%, 35%);
+                    background: hsl(45, 70%, 50%);
                     padding: 8px 16px;
                     border: none;
                 }
-                button:active, select:active {
-                    background: hsl(45, 35%, 25%);
+                button:active, select:active, .button:active {
+                    background: hsl(45, 70%, 40%);
                 }
-                option[selected]::before {
-                    content: "[x] "; }
 
-                .program-info, .subprogram-info {
+                .program {
+                    padding: 8px 16px;
                     display: flex;
                     flex-direction: row;
-                    align-items: center;
-                    margin-bottom: 8px; }
-                .program-info:not(:first-child) {
-                    margin-top: 24px; }
+                    align-items: center; }
                 .program-name {
+                    padding-top: 4px;
+                    align-self: flex-start;
                     font-size: 16px;
-                    padding-right: 16px;
                     text-align: left;
-                    flex-basis: 192px; }
-                .subprogram-info .program-name {
-                    margin-left: 32px;
-                    flex-basis: 160px;
-                }
-                .program-bar-container {
+                    flex-basis: 192px;
+                    margin-right: 8px; }
+                .program-bars {
                     flex-grow: 1; }
-                .program-bar {
-                    position: relative;
-                    height: 24px;
-                    background: #aaa; }
-                .active-bar {
-                    position: relative;
-                    height: 24px;
-                    background: #555; }
-                .open-time, .active-time {
-                    font-size: 14px;
-                    display: none; }
-                .program-bar-container:hover .open-time, .program-bar-container:hover .active-time {
-                    display: block;
-                    position: absolute;
-                    top: 48px;
-                    background: #eee;
-                    padding: 8px;
-                    z-index: 1;
-                    min-width: 128px;
+                .program-time {
+                    font-size: 12px;
+                    margin-bottom: 2px;
+                    color: #aaa; }
+                    .program-time-active {
+                        color: hsl(45, 70%, 50%); }
+                .program:not(.program-sub) {
+                    border-top: 1px solid #aaa;
                 }
-                .active-time {
-                    top: 24px !important; }
 
-                .program-Firefox .program-bar {
-                    background: hsl(30, 65%, 75%); }
-                .program-Firefox .active-bar {
-                    background: hsl(30, 65%, 50%); }
+                .program-bar {
+                    margin-bottom: 6px;
+                    height: 4px;
+                    background: #ccc;
+                    width: var(--percent); }
+                    .program-bar-active {
+                        background: hsl(45, 70%, 50%); }
+
+                .program-Firefox .program-bar-active {
+                    background: hsl(30, 75%, 50%); }
+                .program-Firefox .program-time-active {
+                    color: hsl(30, 75%, 50%); }
         </style>
         <!--}-->
     </head>
@@ -93,15 +92,21 @@
             <h1>{self.name}'s Activity</h1>
             <p>{self.date.format("%Y-%m-%d")}</p>
         </header>
-        <form method="GET" action="/{self.name}/redirect">
-            <select name="device" required>
-            {:for (id, data) in self.devices.iter()}
-                <option {:if id == id}selected{:end} value="{id}">{data}</option>
-            {:end}
-            </select>
-            <input type="date" name="date" value="{self.date.format("%Y-%m-%d")}" required>
-            <button type="submit">Go</button>
-        </form>
+        <div id="subheader">
+            <a class="button" href="/{self.name}/{(self.date + chrono::Duration::days(-1)).format("%Y/%m/%d")}/{self.device}/">&lt;</a>
+
+            <form method="GET" action="/{self.name}/redirect">
+                <select name="device" required>
+                {:for (id, data) in self.devices.iter()}
+                    <option {:if *id == self.device}selected{:end} value="{id}">{data}</option>
+                {:end}
+                </select>
+                <input type="date" name="date" value="{self.date.format("%Y-%m-%d")}" required>
+                <button type="submit">Go</button>
+            </form>
+
+            <a class="button" href="/{self.name}/{(self.date + chrono::Duration::days(1)).format("%Y/%m/%d")}/{self.device}/">&gt;</a>
+        </div>
 
         {:fn format_class(s: &str) -> String {
             s.replace(" ", "_").to_lowercase()
@@ -123,38 +128,35 @@
         }}
 
         <main>
-        {:let max_time = self.monitor.open.iter().max_by_key(|(prg, &time)| -> u32 {time}).map(|(_, &time)| time).unwrap()}
+        {:let max_time = std::cmp::max(60 * 60 * 2, self.monitor.open.iter().max_by_key(|(prg, &time)| -> u32 {time}).map(|(_, &time)| time).unwrap())}
         {:let mut program_order: Vec<_> = self.monitor.open.keys().collect()}
         {: program_order.sort_by(|a, b| self.active_data.get(&b.program).map(|x| x.0).unwrap_or(0).partial_cmp(&self.active_data.get(&a.program).map(|x| x.0).unwrap_or(0)).unwrap()) }
         {:for prg in program_order.iter()}
             {:let time = self.monitor.open[prg]}
-            <div class="program-info program-{format_class(&prg.program)}">
+            <div class="program program--{format_class(&prg.program)}">
                 <div class="program-name">{prg.program}</div>
-                <div class="program-bar-container">
-                    <div class="program-bar" style="width:{(time as f64) / (max_time as f64) * 100.0}%">
-                        <div class="open-time">Open: {format_duration(time)}</div>
-
-                        {:if self.active_data.contains_key(&prg.program)}
-                            {:let active_time = self.active_data[&prg.program].0}
-                            <div class="active-bar" style="width:{(active_time as f64) / (time as f64) * 100.0}%"></div>
-                            <div class="active-time">Active: {format_duration(active_time)}</div>
-                        {:end}
-                        </div>
-                    </div>
+                <div class="program-bars">
+                    {:if self.active_data.contains_key(&prg.program)}
+                        {:let active_time = self.active_data[&prg.program].0}
+                        <div class="program-time program-time-active">{format_duration(active_time)}</div>
+                        <div class="program-bar program-bar-active" style="--percent: {(active_time as f64) / (max_time as f64) * 100.0}%"></div>
+                    {:end}
+                    <div class="program-time program-time-open">{format_duration(time)}</div>
+                    <div class="program-bar" style="--percent: {(time as f64) / (max_time as f64) * 100.0}%"></div>
+                </div>
             </div>
-            {:if self.active_data.contains_key(&prg.program)}
-                {:for subprogram in self.active_data[&prg.program].1.iter()}
 
+            {:if self.active_data.contains_key(&prg.program)}
+            {:for subprogram in self.active_data[&prg.program].1.iter()}
                 {:let active_time = self.monitor.active[&monitor::ActiveProgram { program: prg.program.clone(), subprogram: Some(subprogram.clone()) }]}
-                <div class="subprogram-info program-{format_class(&prg.program)}">
+                <div class="program program-sub program--{format_class(&prg.program)}">
                     <div class="program-name">{subprogram}</div>
-                    <div class="program-bar-container">
-                        <div class="active-bar" style="width:{(active_time as f64) / (max_time as f64) * 100.0}%">
-                            <div class="active-time">Active: {format_duration(active_time)}</div>
-                        </div>
+                    <div class="program-bars">
+                        <div class="program-time program-time-active">{format_duration(active_time)}</div>
+                        <div class="program-bar program-bar-active" style="--percent: {(active_time as f64) / (max_time as f64) * 100.0}%"></div>
                     </div>
                 </div>
-                {:end}
+            {:end}
             {:end}
         {:end}
         </main>
