@@ -3,6 +3,11 @@
         <title>Monitor - {self.name}</title>
         <!--{#-->
         <style>
+                main {
+                    max-width: 1024px;
+                    margin: auto;
+                    margin-top: 32px;
+                }
                 .program {
                     padding: 8px 16px;
                     display: flex;
@@ -54,7 +59,7 @@
         <!--}-->
     </head>
     <body>
-        {@ HeaderTemplate {name: self.name.clone(), date: self.date.clone(), device: self.device, devices: self.devices.clone()}.render_string()? }
+        {:include HeaderTemplate {name: self.name.clone(), date: self.date.clone(), device: self.device, devices: self.devices.clone()} }
 
         {:fn format_class(s: &str) -> String {
             s.replace(" ", "_").to_lowercase()
@@ -76,7 +81,7 @@
         }}
 
         <main>
-        {:let max_time = std::cmp::max(60 * 60 * 2, self.monitor.open.iter().max_by_key(|(prg, &time)| -> u32 {time}).map(|(_, &time)| time).unwrap())}
+        {:let max_time = std::cmp::max(60 * 60 * 3, self.monitor.open.iter().max_by_key(|(prg, &time)| -> u32 {time}).map(|(_, &time)| time).unwrap())}
         {:let mut program_order: Vec<_> = self.monitor.open.keys().collect()}
         {: program_order.sort_by(|a, b| self.active_data.get(&b.program).map(|x| x.0).unwrap_or(0).partial_cmp(&self.active_data.get(&a.program).map(|x| x.0).unwrap_or(0)).unwrap()) }
         {:for prg in program_order.iter()}

@@ -4,7 +4,7 @@
         <title>Monitor - {self.name}</title>
     </head>
     <body>
-        {@ HeaderTemplate {name: self.name.clone(), date: self.date.clone(), device: self.device, devices: self.devices.clone()}.render_string()? }
+        {:include HeaderTemplate {name: self.name.clone(), date: self.date.clone(), device: self.device, devices: self.devices.clone()} }
 
         <p style="margin-top:128px;text-align:center">No data :(</p>
     </body>
